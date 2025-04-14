@@ -3,10 +3,9 @@ import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 from pmdarima import auto_arima
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
@@ -18,9 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def create_features(data, target_col='Close', lag_days=5):
-    """
-    Create technical features for machine learning models.
-    """
+    """Create technical features for machine learning models."""
     df = data.copy()
     
     # Technical indicators
@@ -88,7 +85,7 @@ def train_arima_model(data, column='Close', forecast_periods=30):
     try:
         y = data[column].values
         model = auto_arima(y, seasonal=False, suppress_warnings=True,
-                          stepwise=True, max_p=3, max_q=3, max_d=1)
+                         stepwise=True, max_p=3, max_q=3, max_d=1)
         
         arima = ARIMA(y, order=model.order).fit()
         forecast = arima.forecast(steps=forecast_periods)
@@ -119,11 +116,9 @@ def train_machine_learning_model(data, model_type='random_forest',
         
         # Model selection
         models = {
-            'Linear Regression (ML)': LinearRegression(),
-            'ridge': Ridge(alpha=1.0),
-            'lasso': Lasso(alpha=0.1),
-            'Random Forest (ML)': RandomForestRegressor(n_estimators=100),
-            'SVR (ML)': SVR(kernel='rbf', C=100)
+            'random_forest': RandomForestRegressor(n_estimators=100),
+            'linear': LinearRegression(),
+            'svr': SVR(kernel='rbf', C=100)
         }
         model = models[model_type]
         model.fit(X_s[:-forecast_periods], y_s[:-forecast_periods])
@@ -134,7 +129,6 @@ def train_machine_learning_model(data, model_type='random_forest',
         for _ in range(forecast_periods):
             pred = model.predict([current_features])[0]
             forecasts.append(pred)
-            # Update lag features
             current_features = np.roll(current_features, 1)
             current_features[0] = pred
         
@@ -206,22 +200,36 @@ def get_price_predictions(data, forecast_periods=30, target_col='Close'):
     """Main prediction function combining all models"""
     results = {}
     
-    # Simple models
-    results['Simple MA (Technical)'] = train_simple_ma_model(data, target_col, forecast_periods)
-    results['Linear Trend (Technical)'] = train_linear_trend_model(data, target_col, forecast_periods)
+    # Model name mapping (display name -> implementation name)
+    model_mapping = {
+        'Simple MA (Technical)': ('simple_ma', train_simple_ma_model),
+        'Linear Trend (Technical)': ('linear_trend', train_linear_trend_model),
+        'ARIMA (Statistical)': ('arima', train_arima_model),
+        'Random Forest (ML)': ('random_forest', train_machine_learning_model),
+        'Linear Regression (ML)': ('linear', train_machine_learning_model),
+        'SVR (ML)': ('svr', train_machine_learning_model),
+        'LSTM (DL)': ('lstm', train_lstm_model)
+    }
     
-    # Statistical models
-    if len(data) >= 100:
-        results['ARIMA (Statistical)'] = train_arima_model(data, target_col, forecast_periods)
-    
-    # ML models
-    ml_models = ['Random Forest (ML)', 'Linear Regression (ML)', 'SVR (ML)']
-    for model in ml_models:
-        results[model] = train_machine_learning_model(data, model, forecast_periods, target_col)
-    
-    # Deep learning
-    if len(data) >= 200:
-        results['LSTM (DL)'] = train_lstm_model(data, forecast_periods, target_col)
+    for display_name, (impl_name, model_func) in model_mapping.items():
+        try:
+            if display_name in ['ARIMA (Statistical)', 'LSTM (DL)']:
+                if len(data) < 100 and display_name == 'ARIMA (Statistical)':
+                    continue
+                if len(data) < 200 and display_name == 'LSTM (DL)':
+                    continue
+            
+            # Call the appropriate model function
+            if display_name in ['Simple MA (Technical)', 'Linear Trend (Technical)']:
+                results[display_name] = model_func(data, target_col, forecast_periods)
+            elif display_name in ['Random Forest (ML)', 'Linear Regression (ML)', 'SVR (ML)']:
+                results[display_name] = model_func(data, impl_name, forecast_periods, target_col)
+            else:
+                results[display_name] = model_func(data, target_col, forecast_periods)
+                
+        except Exception as e:
+            logger.error(f"Error training {display_name}: {str(e)}")
+            results[display_name] = {'predictions': None, 'error': str(e)}
     
     return results
 
