@@ -1,12 +1,18 @@
- streamlit>=1.24.0
- numpy<2
- pandas>=2.0.0
- yfinance>=0.2.44
- plotly>=5.14.0
- plotly==5.14.0
- openpyxl>=3.1.2
- scikit-learn>=1.0.0
- statsmodels>=0.13.0
- pmdarima>=2.0.3
- tensorflow>=2.0.0
- matplotlib>=3.7.2  # For visualization (optional but recommended)
+streamlit>=1.44.1
+pandas>=2.2.3
+numpy>=2.2.4
+plotly>=6.0.1
+yfinance>=0.2.55
+openpyxl>=3.1.5
+scikit-learn>=1.6.1
+statsmodels>=0.14.4
+# Core dependencies with pinned versions to avoid binary incompatibility
+numpy==1.23.5
+pandas==1.5.3
+plotly==5.14.1
+streamlit>=1.24.0
+yfinance>=0.2.28
+openpyxl>=3.1.2
+ #pmdarima>=2.0.3
+# tensorflow>=2.0.0
+# matplotlib>=3.7.2  # For visualization (optional but recommended)
