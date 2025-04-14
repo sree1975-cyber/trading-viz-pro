@@ -52,7 +52,7 @@ def train_simple_ma_model(data, column='Close', forecast_periods=30, window=20):
         
         return {
             'predictions': pd.Series(forecast, index=dates),
-            'model': 'Simple MA',
+            'model': 'Simple MA (Technical)',
             'window': window
         }
     except Exception as e:
@@ -76,7 +76,7 @@ def train_linear_trend_model(data, column='Close', forecast_periods=30):
         
         return {
             'predictions': pd.Series(forecast, index=dates),
-            'model': 'Linear Trend',
+            'model': 'Linear Trend (Technical)',
             'slope': m
         }
     except Exception as e:
@@ -96,7 +96,7 @@ def train_arima_model(data, column='Close', forecast_periods=30):
         
         return {
             'predictions': pd.Series(forecast, index=dates),
-            'model': 'ARIMA',
+            'model': 'ARIMA (Statistical)',
             'order': model.order
         }
     except Exception as e:
@@ -119,11 +119,11 @@ def train_machine_learning_model(data, model_type='random_forest',
         
         # Model selection
         models = {
-            'linear': LinearRegression(),
+            'Linear Regression (ML)': LinearRegression(),
             'ridge': Ridge(alpha=1.0),
             'lasso': Lasso(alpha=0.1),
-            'random_forest': RandomForestRegressor(n_estimators=100),
-            'svr': SVR(kernel='rbf', C=100)
+            'Random Forest (ML)': RandomForestRegressor(n_estimators=100),
+            'SVR (ML)': SVR(kernel='rbf', C=100)
         }
         model = models[model_type]
         model.fit(X_s[:-forecast_periods], y_s[:-forecast_periods])
@@ -195,7 +195,7 @@ def train_lstm_model(data, forecast_periods=30, target_col='Close', window=60):
         
         return {
             'predictions': pd.Series(predictions, index=dates),
-            'model': 'LSTM',
+            'model': 'LSTM (DL)',
             'error': None
         }
     except Exception as e:
@@ -207,21 +207,21 @@ def get_price_predictions(data, forecast_periods=30, target_col='Close'):
     results = {}
     
     # Simple models
-    results['simple_ma'] = train_simple_ma_model(data, target_col, forecast_periods)
-    results['linear_trend'] = train_linear_trend_model(data, target_col, forecast_periods)
+    results['Simple MA (Technical)'] = train_simple_ma_model(data, target_col, forecast_periods)
+    results['Linear Trend (Technical)'] = train_linear_trend_model(data, target_col, forecast_periods)
     
     # Statistical models
     if len(data) >= 100:
-        results['arima'] = train_arima_model(data, target_col, forecast_periods)
+        results['ARIMA (Statistical)'] = train_arima_model(data, target_col, forecast_periods)
     
     # ML models
-    ml_models = ['random_forest', 'linear', 'svr']
+    ml_models = ['Random Forest (ML)', 'Linear Regression (ML)', 'SVR (ML)']
     for model in ml_models:
         results[model] = train_machine_learning_model(data, model, forecast_periods, target_col)
     
     # Deep learning
     if len(data) >= 200:
-        results['lstm'] = train_lstm_model(data, forecast_periods, target_col)
+        results['LSTM (DL)'] = train_lstm_model(data, forecast_periods, target_col)
     
     return results
 
