@@ -12,7 +12,8 @@ xgboost
 lightgbm
 catboost  
 shap
-scikit-learn<=1.5.1
+#scikit-learn<=1.5.1
+scikit-learn
 openpyxl
 cmdstanpy
 pystan
@@ -25,18 +26,18 @@ arch
 TextBlob
 tensorflow
 pydrive
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-google-api-python-client
+#google-auth
+#google-auth-oauthlib
+#google-auth-httplib2
+#google-api-python-client
 xlsxwriter
 #openbb
-backtrader
+#backtrader
 tabulate
 streamlit-option-menu
 streamlit-lottie
 requests
-ollama
-kaleido
+#ollama
+#kaleido
 utils
 pmdarima>=2.0.3  # Add this if your prediction.py uses it
