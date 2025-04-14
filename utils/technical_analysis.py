@@ -31,81 +31,114 @@ def calculate_indicators(data, selected_indicators):
     result = {}
     
     for indicator in selected_indicators:
-        if indicator == "SMA":
-            for period in available_indicators[indicator]["periods"]:
-                result[f"SMA_{period}"] = calculate_sma(data, period)
-        
-        elif indicator == "EMA":
-            for period in available_indicators[indicator]["periods"]:
-                result[f"EMA_{period}"] = calculate_ema(data, period)
-        
-        elif indicator == "RSI":
-            period = available_indicators[indicator]["period"]
-            result["RSI"] = calculate_rsi(data, period)
+        try:
+            if indicator == "SMA":
+                # Create a nested dictionary for SMA data
+                sma_dict = {}
+                for period in available_indicators[indicator]["periods"]:
+                    sma_dict[f"{period}"] = calculate_sma(data, period)
+                result["SMA"] = sma_dict
             
-        elif indicator == "MACD":
-            fast = available_indicators[indicator]["fast"]
-            slow = available_indicators[indicator]["slow"]
-            signal = available_indicators[indicator]["signal"]
-            macd, signal_line, histogram = calculate_macd(data, fast, slow, signal)
-            result["MACD"] = {"MACD": macd, "Signal": signal_line, "Histogram": histogram}
+            elif indicator == "EMA":
+                # Create a nested dictionary for EMA data
+                ema_dict = {}
+                for period in available_indicators[indicator]["periods"]:
+                    ema_dict[f"{period}"] = calculate_ema(data, period)
+                result["EMA"] = ema_dict
             
-        elif indicator == "Bollinger Bands":
-            period = available_indicators[indicator]["period"]
-            std_dev = available_indicators[indicator]["std_dev"]
-            upper, middle, lower = calculate_bollinger_bands(data, period, std_dev)
-            result["Bollinger Bands"] = {"Upper": upper, "Middle": middle, "Lower": lower}
-            
-        elif indicator == "Stochastic Oscillator":
-            k_period = available_indicators[indicator]["k_period"]
-            d_period = available_indicators[indicator]["d_period"]
-            k, d = calculate_stochastic_oscillator(data, k_period, d_period)
-            result["Stochastic Oscillator"] = {"K": k, "D": d}
-            
-        elif indicator == "ATR":
-            period = available_indicators[indicator]["period"]
-            result["ATR"] = calculate_atr(data, period)
-            
-        elif indicator == "OBV":
-            result["OBV"] = calculate_obv(data)
-            
-        elif indicator == "Ichimoku Cloud":
-            conv_line = available_indicators[indicator]["conversion_line"]
-            base_line = available_indicators[indicator]["base_line"]
-            leading_span_b = available_indicators[indicator]["leading_span_b"]
-            displacement = available_indicators[indicator]["displacement"]
-            tenkan, kijun, senkou_a, senkou_b, chikou = calculate_ichimoku(data, conv_line, base_line, leading_span_b, displacement)
-            result["Ichimoku Cloud"] = {
-                "Tenkan": tenkan,
-                "Kijun": kijun,
-                "Senkou A": senkou_a,
-                "Senkou B": senkou_b,
-                "Chikou": chikou
-            }
-            
-        elif indicator == "Parabolic SAR":
-            initial_af = available_indicators[indicator]["initial_af"]
-            max_af = available_indicators[indicator]["max_af"]
-            result["Parabolic SAR"] = calculate_parabolic_sar(data, initial_af, max_af)
-            
-        elif indicator == "ADX":
-            period = available_indicators[indicator]["period"]
-            adx, pdi, ndi = calculate_adx(data, period)
-            result["ADX"] = {"ADX": adx, "+DI": pdi, "-DI": ndi}
-            
-        elif indicator == "CCI":
-            period = available_indicators[indicator]["period"]
-            result["CCI"] = calculate_cci(data, period)
+            elif indicator == "RSI":
+                period = available_indicators[indicator]["period"]
+                result["RSI"] = calculate_rsi(data, period)
+                
+            elif indicator == "MACD":
+                fast = available_indicators[indicator]["fast"]
+                slow = available_indicators[indicator]["slow"]
+                signal = available_indicators[indicator]["signal"]
+                macd, signal_line, histogram = calculate_macd(data, fast, slow, signal)
+                result["MACD"] = {"MACD": macd, "Signal": signal_line, "Histogram": histogram}
+                
+            elif indicator == "Bollinger Bands":
+                period = available_indicators[indicator]["period"]
+                std_dev = available_indicators[indicator]["std_dev"]
+                upper, middle, lower = calculate_bollinger_bands(data, period, std_dev)
+                result["Bollinger Bands"] = {"Upper": upper, "Middle": middle, "Lower": lower}
+                
+            elif indicator == "Stochastic Oscillator":
+                k_period = available_indicators[indicator]["k_period"]
+                d_period = available_indicators[indicator]["d_period"]
+                k, d = calculate_stochastic_oscillator(data, k_period, d_period)
+                result["Stochastic Oscillator"] = {"K": k, "D": d}
+                
+            elif indicator == "ATR":
+                period = available_indicators[indicator]["period"]
+                result["ATR"] = calculate_atr(data, period)
+                
+            elif indicator == "OBV":
+                result["OBV"] = calculate_obv(data)
+                
+            elif indicator == "Ichimoku Cloud":
+                conv_line = available_indicators[indicator]["conversion_line"]
+                base_line = available_indicators[indicator]["base_line"]
+                leading_span_b = available_indicators[indicator]["leading_span_b"]
+                displacement = available_indicators[indicator]["displacement"]
+                tenkan, kijun, senkou_a, senkou_b, chikou = calculate_ichimoku(data, conv_line, base_line, leading_span_b, displacement)
+                result["Ichimoku Cloud"] = {
+                    "Tenkan": tenkan,
+                    "Kijun": kijun,
+                    "Senkou A": senkou_a,
+                    "Senkou B": senkou_b,
+                    "Chikou": chikou
+                }
+                
+            elif indicator == "Parabolic SAR":
+                initial_af = available_indicators[indicator]["initial_af"]
+                max_af = available_indicators[indicator]["max_af"]
+                result["Parabolic SAR"] = calculate_parabolic_sar(data, initial_af, max_af)
+                
+            elif indicator == "ADX":
+                period = available_indicators[indicator]["period"]
+                adx, pdi, ndi = calculate_adx(data, period)
+                result["ADX"] = {"ADX": adx, "+DI": pdi, "-DI": ndi}
+                
+            elif indicator == "CCI":
+                period = available_indicators[indicator]["period"]
+                result["CCI"] = calculate_cci(data, period)
+        except Exception as e:
+            # Create a placeholder to avoid KeyError for failed indicators
+            print(f"Error calculating {indicator}: {str(e)}")
+            if indicator in ["SMA", "EMA", "MACD", "Bollinger Bands", "Stochastic Oscillator", "Ichimoku Cloud", "ADX"]:
+                result[indicator] = {"Error": f"Failed to calculate {indicator}"}
+            else:
+                result[indicator] = pd.Series(np.nan, index=data.index)
     
     return result
 
 def calculate_sma(data, period):
     """Calculate Simple Moving Average"""
-    return data['Close'].rolling(window=period).mean()
+    try:
+        return data['Close'].rolling(window=period).mean()
+    except Exception as e:
+        # Fallback method
+        sma = pd.Series(index=data.index)
+        for i in range(len(data)):
+            if i < period - 1:
+                sma.iloc[i] = np.nan
+            else:
+                sma.iloc[i] = data['Close'].iloc[i-period+1:i+1].mean()
+        return sma
 
 def calculate_ema(data, period):
     """Calculate Exponential Moving Average"""
-    return data['Close'].ewm(span=period, adjust=False).mean()
+    try:
+        return data['Close'].ewm(span=period, adjust=False).mean()
+    except Exception as e:
+        # Manual EMA calculation
+        alpha = 2 / (period + 1)
+        ema = pd.Series(index=data.index)
+        ema.iloc[0] = data['Close'].iloc[0]
+        for i in range(1, len(data)):
+            ema.iloc[i] = data['Close'].iloc[i] * alpha + ema.iloc[i-1] * (1 - alpha)
+        return ema
 
 def calculate_rsi(data, period=14):
     """Calculate Relative Strength Index"""
@@ -301,7 +334,15 @@ def calculate_cci(data, period=20):
     """Calculate Commodity Channel Index"""
     typical_price = (data['High'] + data['Low'] + data['Close']) / 3
     mean_tp = typical_price.rolling(window=period).mean()
-    mean_deviation = typical_price.rolling(window=period).apply(lambda x: pd.Series(x).mad())
+    
+    # Manual calculation of mean absolute deviation since .mad() is deprecated
+    def calculate_mad(x):
+        return np.abs(x - x.mean()).mean()
+    
+    mean_deviation = typical_price.rolling(window=period).apply(calculate_mad, raw=True)
+    
+    # Avoid division by zero
+    mean_deviation = mean_deviation.replace(0, np.nan)
     
     cci = (typical_price - mean_tp) / (0.015 * mean_deviation)
     
