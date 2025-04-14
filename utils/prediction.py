@@ -226,22 +226,29 @@ def train_lstm_model(data, forecast_periods=30, target_col='Close', window=60):
         return {'predictions': None, 'error': str(e)}
 
 def get_price_predictions(data, forecast_periods=30, target_col='Close'):
-    """Main prediction function combining all models"""
+    """Main prediction function - FINAL WORKING VERSION"""
     results = {}
     
-    # Simple models
-    results['Simple MA (Technical)'] = train_simple_ma_model(data, target_col, forecast_periods)
-    results['Linear Trend (Technical)'] = train_linear_trend_model(data, target_col, forecast_periods)
+    # Model mapping dictionary (dropdown name -> training function)
+    MODEL_MAPPING = {
+        "Simple MA (Technical)": lambda: train_simple_ma_model(data, target_col, forecast_periods),
+        "Linear Trend (Technical)": lambda: train_linear_trend_model(data, target_col, forecast_periods),
+        "ARIMA (Statistical)": lambda: train_arima_model(data, target_col, forecast_periods),
+        "Random Forest (ML)": lambda: train_random_forest_model(data, forecast_periods, target_col),
+        "SVR (ML)": lambda: train_svr_model(data, forecast_periods, target_col),
+        "LSTM (DL)": lambda: train_lstm_model(data, forecast_periods, target_col)
+    }
     
-    # Statistical models
-    results['ARIMA (Statistical)'] = train_arima_model(data, target_col, forecast_periods)
-    
-    # ML models
-    results['Random Forest (ML)'] = train_random_forest_model(data, forecast_periods, target_col)
-    results['SVR (ML)'] = train_svr_model(data, forecast_periods, target_col)
-    
-    # Deep learning
-    results['LSTM (DL)'] = train_lstm_model(data, forecast_periods, target_col)
+    for model_name, model_func in MODEL_MAPPING.items():
+        try:
+            results[model_name] = model_func()
+        except Exception as e:
+            logger.error(f"Error in {model_name}: {str(e)}")
+            results[model_name] = {
+                'predictions': None,
+                'error': str(e),
+                'model': model_name
+            }
     
     return results
 
