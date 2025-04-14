@@ -3,13 +3,11 @@ import numpy as np
 from statsmodels.tsa.arima.model import ARIMA
 from pmdarima import auto_arima
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 import logging
 
 # Configure logging
@@ -23,12 +21,7 @@ def create_features(data, target_col='Close', lag_days=5):
     # Technical indicators
     df['MA_5'] = df[target_col].rolling(5).mean()
     df['MA_20'] = df[target_col].rolling(20).mean()
-    df['MA_50'] = df[target_col].rolling(50).mean()
     df['Return_1'] = df[target_col].pct_change(1)
-    df['Return_5'] = df[target_col].pct_change(5)
-    df['Volatility_5'] = df[target_col].rolling(5).std()
-    df['High_Low_Ratio'] = df['High'] / df['Low']
-    df['Close_Open_Ratio'] = df['Close'] / df['Open']
     
     # Lag features
     for lag in range(1, lag_days+1):
@@ -83,9 +76,12 @@ def train_linear_trend_model(data, column='Close', forecast_periods=30):
 def train_arima_model(data, column='Close', forecast_periods=30):
     """ARIMA Time Series Model"""
     try:
+        if len(data) < 50:
+            return {'predictions': None, 'error': 'Not enough data (minimum 50 points required)'}
+            
         y = data[column].values
         model = auto_arima(y, seasonal=False, suppress_warnings=True,
-                         stepwise=True, max_p=3, max_q=3, max_d=1)
+                          stepwise=True, max_p=3, max_q=3, max_d=1)
         
         arima = ARIMA(y, order=model.order).fit()
         forecast = arima.forecast(steps=forecast_periods)
@@ -100,9 +96,8 @@ def train_arima_model(data, column='Close', forecast_periods=30):
         logger.error(f"ARIMA Error: {str(e)}")
         return {'predictions': None, 'error': str(e)}
 
-def train_machine_learning_model(data, model_type='random_forest', 
-                               forecast_periods=30, target_col='Close'):
-    """Machine Learning Models"""
+def train_random_forest_model(data, forecast_periods=30, target_col='Close'):
+    """Random Forest Model"""
     try:
         df = create_features(data, target_col)
         y = df[target_col].values
@@ -114,13 +109,7 @@ def train_machine_learning_model(data, model_type='random_forest',
         X_s = scaler_X.transform(X)
         y_s = scaler_y.transform(y.reshape(-1,1)).ravel()
         
-        # Model selection
-        models = {
-            'random_forest': RandomForestRegressor(n_estimators=100),
-            'linear': LinearRegression(),
-            'svr': SVR(kernel='rbf', C=100)
-        }
-        model = models[model_type]
+        model = RandomForestRegressor(n_estimators=100)
         model.fit(X_s[:-forecast_periods], y_s[:-forecast_periods])
         
         # Forecast
@@ -133,23 +122,64 @@ def train_machine_learning_model(data, model_type='random_forest',
             current_features[0] = pred
         
         # Inverse transform
-        forecasts = scaler_y.inverse_transform(
-            np.array(forecasts).reshape(-1,1)).ravel()
+        forecasts = scaler_y.inverse_transform(np.array(forecasts).reshape(-1,1)).ravel()
         dates = pd.date_range(data.index[-1] + pd.Timedelta(days=1), 
                             periods=forecast_periods, freq='D')
         
         return {
             'predictions': pd.Series(forecasts, index=dates),
-            'model': model_type,
+            'model': 'Random Forest (ML)',
             'error': None
         }
     except Exception as e:
-        logger.error(f"ML Error: {str(e)}")
+        logger.error(f"Random Forest Error: {str(e)}")
+        return {'predictions': None, 'error': str(e)}
+
+def train_svr_model(data, forecast_periods=30, target_col='Close'):
+    """Support Vector Regression Model"""
+    try:
+        df = create_features(data, target_col)
+        y = df[target_col].values
+        X = df.drop(target_col, axis=1)
+        
+        # Scale data
+        scaler_X = MinMaxScaler().fit(X)
+        scaler_y = MinMaxScaler().fit(y.reshape(-1,1))
+        X_s = scaler_X.transform(X)
+        y_s = scaler_y.transform(y.reshape(-1,1)).ravel()
+        
+        model = SVR(kernel='rbf', C=100)
+        model.fit(X_s[:-forecast_periods], y_s[:-forecast_periods])
+        
+        # Forecast
+        current_features = X_s[-1].copy()
+        forecasts = []
+        for _ in range(forecast_periods):
+            pred = model.predict([current_features])[0]
+            forecasts.append(pred)
+            current_features = np.roll(current_features, 1)
+            current_features[0] = pred
+        
+        # Inverse transform
+        forecasts = scaler_y.inverse_transform(np.array(forecasts).reshape(-1,1)).ravel()
+        dates = pd.date_range(data.index[-1] + pd.Timedelta(days=1), 
+                            periods=forecast_periods, freq='D')
+        
+        return {
+            'predictions': pd.Series(forecasts, index=dates),
+            'model': 'SVR (ML)',
+            'error': None
+        }
+    except Exception as e:
+        logger.error(f"SVR Error: {str(e)}")
         return {'predictions': None, 'error': str(e)}
 
 def train_lstm_model(data, forecast_periods=30, target_col='Close', window=60):
     """LSTM Neural Network Model"""
     try:
+        if len(data) < 100:
+            return {'predictions': None, 'error': 'Not enough data (minimum 100 points required)'}
+            
         # Data preparation
         scaler = MinMaxScaler(feature_range=(0,1))
         scaled = scaler.fit_transform(data[[target_col]])
@@ -182,8 +212,7 @@ def train_lstm_model(data, forecast_periods=30, target_col='Close', window=60):
             forecast_seq = np.append(forecast_seq[1:], pred)
         
         # Inverse transform
-        predictions = scaler.inverse_transform(
-            np.array(predictions).reshape(-1,1)).ravel()
+        predictions = scaler.inverse_transform(np.array(predictions).reshape(-1,1)).ravel()
         dates = pd.date_range(data.index[-1] + pd.Timedelta(days=1), 
                             periods=forecast_periods, freq='D')
         
@@ -200,36 +229,19 @@ def get_price_predictions(data, forecast_periods=30, target_col='Close'):
     """Main prediction function combining all models"""
     results = {}
     
-    # Model name mapping (display name -> implementation name)
-    model_mapping = {
-        'Simple MA (Technical)': ('simple_ma', train_simple_ma_model),
-        'Linear Trend (Technical)': ('linear_trend', train_linear_trend_model),
-        'ARIMA (Statistical)': ('arima', train_arima_model),
-        'Random Forest (ML)': ('random_forest', train_machine_learning_model),
-        'Linear Regression (ML)': ('linear', train_machine_learning_model),
-        'SVR (ML)': ('svr', train_machine_learning_model),
-        'LSTM (DL)': ('lstm', train_lstm_model)
-    }
+    # Simple models
+    results['Simple MA (Technical)'] = train_simple_ma_model(data, target_col, forecast_periods)
+    results['Linear Trend (Technical)'] = train_linear_trend_model(data, target_col, forecast_periods)
     
-    for display_name, (impl_name, model_func) in model_mapping.items():
-        try:
-            if display_name in ['ARIMA (Statistical)', 'LSTM (DL)']:
-                if len(data) < 100 and display_name == 'ARIMA (Statistical)':
-                    continue
-                if len(data) < 200 and display_name == 'LSTM (DL)':
-                    continue
-            
-            # Call the appropriate model function
-            if display_name in ['Simple MA (Technical)', 'Linear Trend (Technical)']:
-                results[display_name] = model_func(data, target_col, forecast_periods)
-            elif display_name in ['Random Forest (ML)', 'Linear Regression (ML)', 'SVR (ML)']:
-                results[display_name] = model_func(data, impl_name, forecast_periods, target_col)
-            else:
-                results[display_name] = model_func(data, target_col, forecast_periods)
-                
-        except Exception as e:
-            logger.error(f"Error training {display_name}: {str(e)}")
-            results[display_name] = {'predictions': None, 'error': str(e)}
+    # Statistical models
+    results['ARIMA (Statistical)'] = train_arima_model(data, target_col, forecast_periods)
+    
+    # ML models
+    results['Random Forest (ML)'] = train_random_forest_model(data, forecast_periods, target_col)
+    results['SVR (ML)'] = train_svr_model(data, forecast_periods, target_col)
+    
+    # Deep learning
+    results['LSTM (DL)'] = train_lstm_model(data, forecast_periods, target_col)
     
     return results
 
@@ -239,7 +251,6 @@ def get_available_prediction_methods():
         "Linear Trend (Technical)",
         "ARIMA (Statistical)",
         "Random Forest (ML)", 
-        "Linear Regression (ML)",
         "SVR (ML)",
         "LSTM (DL)"
     ]
@@ -250,7 +261,6 @@ def get_prediction_method_descriptions():
         "Linear Trend (Technical)": "Extrapolates recent price trends using linear regression",
         "ARIMA (Statistical)": "Auto-regressive integrated moving average model for time series",
         "Random Forest (ML)": "Ensemble of decision trees capturing non-linear patterns",
-        "Linear Regression (ML)": "Linear model for simple trend analysis",
         "SVR (ML)": "Support vector machine for complex regression patterns",
         "LSTM (DL)": "Long short-term memory neural network for sequential data"
     }
