@@ -9,8 +9,10 @@ import io
 from utils.data_fetcher import fetch_stock_data, fetch_crypto_data, get_available_stocks, get_available_cryptos
 from utils.technical_analysis import calculate_indicators, available_indicators
 from utils.chart_utils import create_candlestick_chart, add_indicator_to_chart, add_volume_to_chart
-from utils.patterns import detect_patterns, pattern_descriptions
-from utils.prediction import (
+# Use our fixed patterns implementation directly
+from fixed_patterns import detect_patterns, pattern_descriptions
+# Use our fixed prediction implementation directly
+from fixed_prediction import (
     get_price_predictions,
     get_available_prediction_methods,
     get_prediction_method_descriptions
@@ -405,13 +407,14 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
             # Prediction settings
             forecast_periods = st.slider("Forecast Periods (Days)", min_value=7, max_value=60, value=30)
             
+            # Get available prediction methods from our simplified implementation
             prediction_methods = get_available_prediction_methods()
             method_descriptions = get_prediction_method_descriptions()
             
             selected_methods = st.multiselect(
                 "Select Prediction Methods",
                 prediction_methods,
-                default=[prediction_methods[0]]  # Default to first method (ARIMA)
+                default=[prediction_methods[0]]  # Default to first method (Moving Average)
             )
             
             if selected_methods:
@@ -426,7 +429,11 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
                         # Map streamlit-friendly method names to the internal method names
                         method_mapping = {
                             "Moving Average (Simple)": "ma",
-                            "Linear Trend (Simple)": "trend"
+                            "Linear Trend (Simple)": "trend",
+                            "ARIMA (Statistical)": "arima",
+                            "Random Forest (ML)": "rf",
+                            "SVR (ML)": "svr",
+                            "LSTM (DL)": "lstm"
                         }
                         
                         # Get predictions
@@ -518,6 +525,10 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
                                     **Model information:**
                                     - **Moving Average**: Uses historical relationship between price and its moving average.
                                     - **Linear Trend**: Fits a straight line to recent price movements to project future direction.
+                                    - **ARIMA**: Autoregressive Integrated Moving Average model that captures temporal dependencies in time series data.
+                                    - **Random Forest**: An ensemble machine learning method that builds multiple decision trees for robust forecasting.
+                                    - **SVR**: Support Vector Regression captures non-linear relationships in data.
+                                    - **LSTM**: Long Short-Term Memory networks are specialized for recognizing patterns over long sequences.
                                     """)
                                 
                                 # Disclaimer
