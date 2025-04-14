@@ -45,50 +45,164 @@ with st.sidebar:
     # Asset Selection
     if asset_type == "Stocks":
         available_assets = get_available_stocks()
-        search_term = st.text_input("Search Stock Symbol or Name", "")
-        if search_term:
-            filtered_assets = [s for s in available_assets if search_term.upper() in s.upper()]
-        else:
-            filtered_assets = available_assets[:100]  # Show only first 100 to avoid cluttering
         
-        selected_asset = st.selectbox("Select Stock", filtered_assets)
+        # Option tabs for symbol selection
+        symbol_option = st.radio("Select symbol option:", ["Choose from popular stocks", "Enter custom symbol"])
+        
+        if symbol_option == "Enter custom symbol":
+            custom_symbol = st.text_input("Enter Stock Symbol (e.g., AAPL)", 
+                                         st.session_state.get('custom_symbol', ""))
+            if custom_symbol:
+                # Store directly entered symbol in session state for later use
+                selected_asset = custom_symbol.upper().strip()
+                st.session_state['custom_symbol'] = selected_asset
+            elif 'custom_symbol' in st.session_state:
+                selected_asset = st.session_state['custom_symbol']
+            else:
+                selected_asset = "AAPL"  # Default to Apple if nothing entered
+        else:
+            # Show popular stocks in categorized selectbox
+            popular_categories = {
+                "Tech Giants": ["AAPL - Apple Inc.", "MSFT - Microsoft Corp.", "GOOGL - Alphabet Inc.", "AMZN - Amazon.com Inc.", "META - Meta Platforms Inc."],
+                "Financial": ["JPM - JPMorgan Chase & Co.", "BAC - Bank of America Corp.", "V - Visa Inc.", "MA - Mastercard Inc."],
+                "Healthcare": ["JNJ - Johnson & Johnson", "PFE - Pfizer Inc.", "UNH - UnitedHealth Group Inc."],
+                "Consumer": ["KO - Coca-Cola Co.", "PEP - PepsiCo Inc.", "MCD - McDonald's Corp.", "SBUX - Starbucks Corp."],
+                "Industrial": ["BA - Boeing Co.", "CAT - Caterpillar Inc.", "GE - General Electric Co."],
+                "Energy": ["XOM - Exxon Mobil Corp.", "CVX - Chevron Corp."]
+            }
+            
+            category = st.selectbox("Select category", list(popular_categories.keys()))
+            selected_asset = st.selectbox("Select Stock", popular_categories[category], index=0)
+        
+        # Always display the final symbol in a visible way
+        symbol_display = selected_asset.split(" - ")[0] if " - " in selected_asset else selected_asset
+        st.sidebar.markdown(f"**Selected Symbol:** {symbol_display}")
+        # Store the clean symbol for later use
+        st.session_state['clean_symbol'] = symbol_display
     else:  # Cryptocurrencies
         available_assets = get_available_cryptos()
-        search_term = st.text_input("Search Cryptocurrency", "")
-        if search_term:
-            filtered_assets = [c for c in available_assets if search_term.upper() in c.upper()]
-        else:
-            filtered_assets = available_assets[:100]
         
-        selected_asset = st.selectbox("Select Cryptocurrency", filtered_assets)
+        # Option tabs for symbol selection
+        symbol_option = st.radio("Select symbol option:", ["Choose from popular cryptocurrencies", "Enter custom symbol"])
+        
+        if symbol_option == "Enter custom symbol":
+            custom_symbol = st.text_input("Enter Crypto Symbol (e.g., BTC-USD)", 
+                                          st.session_state.get('custom_crypto', ""))
+            if custom_symbol:
+                # Store directly entered symbol in session state for later use
+                selected_asset = custom_symbol.upper().strip()
+                st.session_state['custom_crypto'] = selected_asset
+            elif 'custom_crypto' in st.session_state:
+                selected_asset = st.session_state['custom_crypto']
+            else:
+                selected_asset = "BTC-USD"  # Default to Bitcoin if nothing entered
+        else:
+            # Show popular cryptocurrencies in categorized selectbox
+            popular_cryptos = {
+                "Major Coins": ["BTC-USD - Bitcoin", "ETH-USD - Ethereum", "BNB-USD - Binance Coin", "XRP-USD - Ripple"],
+                "Altcoins": ["SOL-USD - Solana", "ADA-USD - Cardano", "DOGE-USD - Dogecoin", "DOT-USD - Polkadot"],
+                "Stablecoins": ["USDT-USD - Tether", "USDC-USD - USD Coin", "DAI-USD - Dai"],
+                "DeFi": ["UNI-USD - Uniswap", "AAVE-USD - Aave", "CAKE-USD - PancakeSwap"],
+                "Metaverse": ["MANA-USD - Decentraland", "SAND-USD - The Sandbox", "AXS-USD - Axie Infinity"]
+            }
+            
+            category = st.selectbox("Select category", list(popular_cryptos.keys()))
+            selected_asset = st.selectbox("Select Cryptocurrency", popular_cryptos[category], index=0)
+        
+        # Always display the final symbol in a visible way
+        symbol_display = selected_asset.split(" - ")[0] if " - " in selected_asset else selected_asset
+        st.sidebar.markdown(f"**Selected Symbol:** {symbol_display}")
+        # Store the clean symbol for later use
+        st.session_state['clean_symbol'] = symbol_display
     
     # Timeframe Selection
+    timeframe_options = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "ytd", "max"]
     timeframe = st.selectbox(
         "Select Timeframe",
-        ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "ytd", "max"]
+        timeframe_options
     )
     
-    # Interval Selection
-    interval_options = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]
-    interval = st.selectbox("Select Interval", interval_options)
+    # Interval Selection - dynamically filtered based on timeframe
+    if timeframe in ["1d", "5d"]:
+        # Short timeframes - allow minute intervals
+        interval_options = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d"]
+        interval_default = "15m" if timeframe == "1d" else "30m"
+        interval_help = "For 1-5 day timeframes, minute-level data is available"
+    elif timeframe in ["1mo"]:
+        # Medium timeframes - hourly or daily
+        interval_options = ["1h", "1d", "5d", "1wk"]
+        interval_default = "1h"
+        interval_help = "For 1 month timeframe, hourly or daily intervals work best"
+    elif timeframe in ["3mo"]:
+        # Medium timeframes - daily 
+        interval_options = ["1d", "5d", "1wk"]
+        interval_default = "1d"
+        interval_help = "For 3 month timeframe, daily intervals work best"
+    else:
+        # Long timeframes - only daily or longer intervals
+        interval_options = ["1d", "5d", "1wk", "1mo"]
+        interval_default = "1d"
+        interval_help = "For longer timeframes (6mo+), minute/hour data isn't available"
+    
+    # Find the default index
+    try:
+        default_idx = interval_options.index(interval_default)
+    except ValueError:
+        default_idx = 0
+        
+    interval = st.selectbox(
+        "Select Interval", 
+        interval_options, 
+        index=default_idx,
+        help=interval_help
+    )
+    
+    # Info message about timeframe/interval relationship
+    timeframe_pairs = {
+        "1d": "Use 1m-90m intervals for intraday data",
+        "5d": "Use 5m-1h intervals for detailed analysis",
+        "1mo": "Use 1h or 1d intervals for best results",
+        "3mo": "Use 1d intervals (hourly data may be incomplete)",
+        "6mo": "Use 1d or 5d intervals (minute/hour data unavailable)",
+        "1y+": "Use 1d, 5d, 1wk intervals (minute/hour data unavailable)"
+    }
+    
+    # Show appropriate help message based on timeframe 
+    if timeframe in ["1d", "5d", "1mo", "3mo", "6mo"]:
+        help_msg = timeframe_pairs[timeframe]
+    else:
+        help_msg = timeframe_pairs["1y+"]
+        
+    st.info(help_msg)
+    
+    # Use the clean symbol stored in session state
+    symbol = st.session_state.get('clean_symbol', selected_asset)
+    if not symbol:
+        symbol = selected_asset.split(" - ")[0] if selected_asset and " - " in selected_asset else selected_asset
+    
+    # Store the currently selected display name (for UI)
+    display_name = selected_asset if " - " in selected_asset else symbol
     
     # Refresh button
     if st.button("Fetch Data"):
-        # Validate that we have a valid selected asset
-        if selected_asset is None or not isinstance(selected_asset, str) or not selected_asset.strip():
-            st.error("Please select a valid asset before fetching data")
+        # Validate that we have a valid symbol
+        if not symbol or not isinstance(symbol, str) or not symbol.strip():
+            st.sidebar.error("Please select a valid asset before fetching data")
         else:
-            st.session_state['selected_asset'] = selected_asset
-            with st.spinner(f"Fetching data for {selected_asset}..."):
+            # Store both the display name and the actual symbol
+            st.session_state['selected_asset_display'] = display_name
+            st.session_state['selected_asset'] = symbol
+            
+            with st.spinner(f"Fetching data for {symbol}..."):
                 try:
                     if asset_type == "Stocks":
-                        data = fetch_stock_data(selected_asset, timeframe, interval)
+                        data = fetch_stock_data(symbol, timeframe, interval)
                     else:
-                        data = fetch_crypto_data(selected_asset, timeframe, interval)
+                        data = fetch_crypto_data(symbol, timeframe, interval)
                     
                     st.session_state['asset_data'] = data
                     st.session_state['asset_type'] = asset_type
-                    st.success("Data fetched successfully!")
+                    st.success(f"Data for {symbol} fetched successfully!")
                 except Exception as e:
                     st.error(f"Error fetching data: {str(e)}")
     
@@ -97,13 +211,13 @@ with st.sidebar:
     
     # Add to watchlist
     if st.button("Add to Watchlist"):
-        if selected_asset is None or not isinstance(selected_asset, str) or not selected_asset.strip():
-            st.error("Please select a valid asset to add to watchlist")
+        if not symbol or not isinstance(symbol, str) or not symbol.strip():
+            st.sidebar.error("Please select a valid asset to add to watchlist")
         elif selected_asset not in st.session_state['watchlist']:
             st.session_state['watchlist'].append(selected_asset)
-            st.success(f"Added {selected_asset} to watchlist")
+            st.sidebar.success(f"Added {selected_asset} to watchlist")
         else:
-            st.warning(f"{selected_asset} is already in your watchlist")
+            st.sidebar.warning(f"{selected_asset} is already in your watchlist")
     
     # Show watchlist
     if st.session_state['watchlist']:
@@ -131,6 +245,14 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
         price_change = current_price - previous_price
         price_change_percent = (price_change / previous_price) * 100
         
+        # Get the latest date
+        latest_date = data.index[-1]
+        date_str = latest_date.strftime("%Y-%m-%d")
+        # If we have time data (for intraday charts)
+        if hasattr(latest_date, 'hour') and (latest_date.hour != 0 or latest_date.minute != 0):
+            date_str = latest_date.strftime("%Y-%m-%d %H:%M")
+        
+        # Price metrics
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric(
@@ -148,6 +270,9 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
                 label="Daily Low",
                 value=f"${data['Low'].iloc[-1]:.2f}"
             )
+            
+        # Display latest date below the metrics
+        st.caption(f"**Last updated:** {date_str}")
         
         # Technical Analysis Indicators Selection
         st.header("Technical Analysis")
@@ -176,10 +301,36 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
                 # Display the chart
                 st.plotly_chart(fig, use_container_width=True)
                 
+                # Store indicator data in session state to prevent errors when switching tabs
+                st.session_state['indicator_data'] = indicator_data
+                
                 # Display indicator data
                 for indicator in selected_indicators:
                     with st.expander(f"{indicator} Data"):
-                        st.write(indicator_data[indicator].dropna().tail())
+                        try:
+                            # Special handling for indicators with multiple outputs and correct dictionary structure
+                            if indicator == "SMA" and indicator in indicator_data:
+                                for period, series in indicator_data[indicator].items():
+                                    st.write(f"SMA {period}:")
+                                    st.write(series.dropna().tail())
+                            elif indicator == "EMA" and indicator in indicator_data:
+                                for period, series in indicator_data[indicator].items():
+                                    st.write(f"EMA {period}:")
+                                    st.write(series.dropna().tail())
+                            elif indicator in ["MACD", "Bollinger Bands", "Stochastic Oscillator", "ADX", "Ichimoku Cloud"] and indicator in indicator_data:
+                                if "Error" in indicator_data[indicator]:
+                                    st.error(indicator_data[indicator]["Error"])
+                                else:
+                                    for component, series in indicator_data[indicator].items():
+                                        st.write(f"{component}:")
+                                        st.write(series.dropna().tail())
+                            elif indicator in indicator_data:
+                                # Standard single-output indicators
+                                st.write(indicator_data[indicator].dropna().tail())
+                            else:
+                                st.error(f"Data for {indicator} not available")
+                        except Exception as e:
+                            st.error(f"Error displaying {indicator} data: {str(e)}")
             else:
                 # Just display price chart if no indicators are selected
                 fig = create_candlestick_chart(data, asset)
@@ -274,11 +425,8 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
                     with st.spinner("Generating price predictions... This may take a few minutes"):
                         # Map streamlit-friendly method names to the internal method names
                         method_mapping = {
-                            "ARIMA (Statistical)": "arima",
-                            "Random Forest (ML)": "random_forest",
-                            "Linear Regression (ML)": "linear",
-                            "Support Vector Regression (ML)": "svr",
-                            "LSTM Neural Network (DL)": "lstm"
+                            "Moving Average (Simple)": "ma",
+                            "Linear Trend (Simple)": "trend"
                         }
                         
                         # Get predictions
@@ -367,10 +515,9 @@ if st.session_state['asset_data'] is not None and st.session_state['selected_ass
                                     st.table(metrics_df)
                                     
                                     st.info("""
-                                    **Metrics explanation:**
-                                    - **MSE**: Mean Squared Error (lower is better)
-                                    - **R²**: Coefficient of determination (higher is better, max 1.0)
-                                    - **AIC**: Akaike Information Criterion (lower is better)
+                                    **Model information:**
+                                    - **Moving Average**: Uses historical relationship between price and its moving average.
+                                    - **Linear Trend**: Fits a straight line to recent price movements to project future direction.
                                     """)
                                 
                                 # Disclaimer
@@ -469,29 +616,5 @@ else:
 # Footer
 st.markdown("---")
 
-# Add a download link for the ZIP file
-import os
-st.subheader("Download Project Code")
-st.markdown("To download the complete source code of this application, click the button below:")
-
-zip_path = 'trading_viz_pro.zip'
-if os.path.exists(zip_path):
-    with open(zip_path, 'rb') as f:
-        zip_data = f.read()
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.download_button(
-            label="⬇️ Download Project Code as ZIP",
-            data=zip_data,
-            file_name="trading_viz_pro.zip",
-            mime="application/zip",
-            help="Download the complete source code of this application",
-            type="primary",
-            use_container_width=True
-        )
-    st.success("ZIP file contains all source code files needed to run this application")
-else:
-    st.error(f"ZIP file not found at {os.path.abspath(zip_path)}")
-
+# Application footer
 st.markdown("TradingViz Pro - Advanced Technical Analysis Tool")
