@@ -1,11 +1,14 @@
+# Core dependencies
 streamlit>=1.24.0
-pandas>=1.5.0
-numpy>=1.24.0
+numpy==1.23.5  # Pin to a specific version to avoid binary incompatibility
+pandas==1.5.3  # Pin pandas to a version compatible with numpy 1.23.5
 plotly==5.14.1
 yfinance>=0.2.28
 openpyxl>=3.1.2
-scikit-learn>=1.0.0
-statsmodels>=0.13.0
+
+# Scientific packages
+scikit-learn==1.2.2  # Pin scikit-learn to a version compatible with numpy 1.23.5
+statsmodels==0.13.5  # Pin statsmodels to a version compatible with numpy 1.23.5
 pmdarima>=2.0.3
 tensorflow>=2.0.0
 
