@@ -10,9 +10,9 @@ from utils.data_fetcher import fetch_stock_data, fetch_crypto_data, get_availabl
 from utils.technical_analysis import calculate_indicators, available_indicators
 from utils.chart_utils import create_candlestick_chart, add_indicator_to_chart, add_volume_to_chart
 # Use our fixed patterns implementation directly
-from fixed_patterns import detect_patterns, pattern_descriptions
+from utils.patterns import detect_patterns, pattern_descriptions
 # Use our fixed prediction implementation directly
-from fixed_prediction import (
+from utils.prediction import (
     get_price_predictions,
     get_available_prediction_methods,
     get_prediction_method_descriptions
