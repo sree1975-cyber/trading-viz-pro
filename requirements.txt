@@ -11,4 +11,4 @@
  tensorflow>=2.0.0
  matplotlib>=3.7.2  # For visualization (optional but recommended)
  utils
- fixed_patterns
+ 
