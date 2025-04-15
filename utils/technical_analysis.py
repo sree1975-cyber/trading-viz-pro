@@ -331,19 +331,32 @@ def calculate_adx(data, period=14):
     return adx, plus_di, minus_di
 
 def calculate_cci(data, period=20):
-    """Calculate Commodity Channel Index"""
+    """Calculate Commodity Channel Index using a robust approach that works across pandas versions"""
+    import numpy as np
+    import pandas as pd
+    
+    # Calculate typical price
     typical_price = (data['High'] + data['Low'] + data['Close']) / 3
+    
+    # Calculate moving average of typical price
     mean_tp = typical_price.rolling(window=period).mean()
     
-    # Manual calculation of mean absolute deviation since .mad() is deprecated
-    def calculate_mad(x):
-        return np.abs(x - x.mean()).mean()
+    # More robust calculation of mean absolute deviation that works in all pandas versions
+    rolling_windows = []
+    for i in range(len(typical_price) - period + 1):
+        window = typical_price.iloc[i:i+period]
+        mad = np.abs(window - window.mean()).mean()
+        rolling_windows.append(mad)
     
-    mean_deviation = typical_price.rolling(window=period).apply(calculate_mad, raw=True)
+    # Create series with proper index
+    mean_deviation = pd.Series(index=typical_price.index[period-1:], data=rolling_windows)
     
     # Avoid division by zero
     mean_deviation = mean_deviation.replace(0, np.nan)
     
-    cci = (typical_price - mean_tp) / (0.015 * mean_deviation)
+    # Calculate CCI
+    cci = pd.Series(index=typical_price.index)
+    valid_indices = mean_deviation.index
+    cci.loc[valid_indices] = (typical_price.loc[valid_indices] - mean_tp.loc[valid_indices]) / (0.015 * mean_deviation)
     
     return cci
